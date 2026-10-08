@@ -13,16 +13,7 @@ images:
     newName: registry.aarnihalinen.fi/library-search
     newTag: 0.3.0
 
-# secret.env and basic-auth.txt are not committed; see the README. The fixed name keeps
-# the StatefulSet from restarting on a hash change it could not follow anyway:
-# Postgres reads the password only when it first creates the database.
-secretGenerator:
-  - name: hub
-    envs:
-      - secret.env
-  # The page's one shared login, as `user:password`.
-  - name: web-login
-    files:
-      - login=basic-auth.txt
-generatorOptions:
-  disableNameSuffixHash: true
+# The secrets `hub` (database password), `web-login` (the page's shared login) and
+# `regcred` (registry pull secret) are not created here. They are SealedSecrets in
+# github.com/Arskah/kube, sealed-secrets/, so that ArgoCD can render this directory
+# without files that are not committed.
