@@ -69,24 +69,25 @@ StatefulSet on the default storage class, the backend, and a route that serves
 the page at <https://music.aarnihalinen.fi> through the cluster's shared
 gateway.
 
+ArgoCD deploys the `k8s` directory: the Application `music-library` in
+[Arskah/kube](https://github.com/Arskah/kube) (`apps/templates/music-library.yml`)
+syncs it from `main`. Merging a change to `k8s` is the deploy.
+
 ```sh
 # Build for the cluster's architecture and push.
 docker build --platform linux/amd64 -t registry.aarnihalinen.fi/library-search:0.3.0 --push .
-
-# The database password. Postgres reads it only when it first creates the
-# database, so changing it later means changing it in Postgres too.
-printf 'password=%s\n' "$(openssl rand -hex 24)" > k8s/secret.env
-
-# The page's shared login. Not committed.
-printf 'radio:%s\n' "$(openssl rand -hex 16)" > k8s/basic-auth.txt
-
-# The namespace first, so the pull secret has somewhere to go.
-kubectl apply -f k8s/namespace.yaml
-kubectl -n music-library create secret docker-registry regcred \
-  --docker-server=registry.aarnihalinen.fi --docker-username=… --docker-password=…
-
-kubectl apply -k k8s
 ```
+
+### Secrets
+
+Three secrets in the namespace are not in this repository. They are SealedSecrets
+in Arskah/kube (`sealed-secrets/sealed-music-library-*.json`):
+
+- `hub`, key `password`: the database password. Postgres reads it only when it
+  first creates the database, so changing it later means changing it in Postgres
+  too.
+- `web-login`, key `login`: the page's shared login, as `user:password`.
+- `regcred`: the pull secret for `registry.aarnihalinen.fi`.
 
 A new image needs a new tag in `k8s/kustomization.yaml`.
 
