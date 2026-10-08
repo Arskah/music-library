@@ -1,0 +1,28 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: music-library
+
+resources:
+  - namespace.yaml
+  - postgres.yaml
+  - web.yaml
+  - gateway.yaml
+
+images:
+  - name: library-search
+    newName: registry.aarnihalinen.fi/library-search
+    newTag: 0.3.0
+
+# secret.env and basic-auth.txt are not committed; see the README. The fixed name keeps
+# the StatefulSet from restarting on a hash change it could not follow anyway:
+# Postgres reads the password only when it first creates the database.
+secretGenerator:
+  - name: hub
+    envs:
+      - secret.env
+  # The page's one shared login, as `user:password`.
+  - name: web-login
+    files:
+      - login=basic-auth.txt
+generatorOptions:
+  disableNameSuffixHash: true

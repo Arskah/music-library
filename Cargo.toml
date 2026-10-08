@@ -1,0 +1,21 @@
+[package]
+name = "library-search"
+version = "0.3.0"
+edition = "2021"
+license = "GPL-3.0-or-later"
+description = "Web page backend for searching a RadiodioDJ library through the Postgres hub"
+
+[dependencies]
+axum = "0.8"
+base64 = "0.22"
+deadpool-postgres = "0.14"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "signal", "net"] }
+tokio-postgres = { version = "0.7", features = ["with-serde_json-1", "with-uuid-1"] }
+tracing = "0.1"
+tracing-subscriber = "0.3"
+uuid = { version = "1", features = ["serde"] }
+
+[profile.release]
+strip = true

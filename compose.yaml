@@ -1,0 +1,26 @@
+# Local run of the same two containers the cluster gets. The password is for
+# this throwaway database only.
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: library
+      POSTGRES_PASSWORD: library
+      POSTGRES_DB: library
+    volumes:
+      - ./dev/hub-sample.sql:/docker-entrypoint-initdb.d/hub-sample.sql:ro
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "library", "-d", "library"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  web:
+    build: .
+    environment:
+      DATABASE_URL: postgres://library:library@postgres:5432/library
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy

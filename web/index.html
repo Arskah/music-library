@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Library search</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f6f6f4;
+        --panel: #ffffff;
+        --line: #d9d9d4;
+        --text: #1c1c1a;
+        --dim: #6b6b66;
+        --accent: #b3261e;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #161615;
+          --panel: #1f1f1d;
+          --line: #353532;
+          --text: #ecece8;
+          --dim: #9a9a94;
+          --accent: #ff8a80;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font: 14px/1.4 system-ui, sans-serif;
+      }
+      main {
+        display: grid;
+        grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+        gap: 16px;
+        padding: 16px;
+        max-width: 1500px;
+        margin: 0 auto;
+      }
+      @media (max-width: 900px) {
+        main {
+          grid-template-columns: minmax(0, 1fr);
+        }
+      }
+      section {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 12px;
+        min-width: 0;
+      }
+      h2 {
+        margin: 0 0 8px;
+        font-size: 14px;
+      }
+      .row {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 8px;
+      }
+      input,
+      select,
+      button {
+        font: inherit;
+        color: inherit;
+        background: var(--bg);
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        padding: 6px 8px;
+      }
+      input {
+        flex: 1;
+        min-width: 0;
+      }
+      button {
+        cursor: pointer;
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+      .scroll {
+        overflow-x: auto;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 4px 6px;
+        border-bottom: 1px solid var(--line);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 260px;
+      }
+      th {
+        color: var(--dim);
+        font-weight: 500;
+      }
+      td.num {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+      }
+      td button {
+        padding: 1px 7px;
+      }
+      tr.loose td {
+        color: var(--dim);
+        font-style: italic;
+      }
+      .note {
+        color: var(--dim);
+        margin: 6px 0;
+      }
+      .error {
+        color: var(--accent);
+      }
+      ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+      li {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        padding: 4px 0;
+        border-bottom: 1px solid var(--line);
+      }
+      li span {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section>
+        <h2>Library</h2>
+        <div class="row">
+          <input id="q" type="search" placeholder="Title, artist, album, album artist, genre" autofocus />
+          <select id="type">
+            <option value="">All types</option>
+            <option value="music">Music</option>
+            <option value="jingle">Jingles</option>
+            <option value="commercial">Commercials</option>
+          </select>
+        </div>
+        <p id="status" class="note"></p>
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr>
+                <th></th>
+                <th>Title</th>
+                <th>Artist</th>
+                <th>Album</th>
+                <th>Genre</th>
+                <th>Time</th>
+              </tr>
+            </thead>
+            <tbody id="results"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <div>
+        <section>
+          <h2 id="draft-heading">New draft</h2>
+          <div class="row">
+            <input id="name" placeholder="Name" />
+            <input id="author" placeholder="Your name" />
+          </div>
+          <div class="row">
+            <button id="save">Save draft</button>
+            <button id="download" disabled>Download file</button>
+            <button id="new">New</button>
+          </div>
+          <p id="draft-status" class="note"></p>
+          <div class="scroll">
+            <table>
+              <tbody id="entries"></tbody>
+            </table>
+          </div>
+        </section>
+        <section style="margin-top: 16px">
+          <h2>Drafts</h2>
+          <ul id="drafts"></ul>
+        </section>
+      </div>
+    </main>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      // Filled in by the server: the path the page is mounted under.
+      const BASE = "__BASE_PATH__";
+      const draft = { id: null, entries: [] };
+
+      function el(tag, text, attrs = {}) {
+        const node = document.createElement(tag);
+        if (text != null) node.textContent = text;
+        Object.assign(node, attrs);
+        return node;
+      }
+
+      function time(seconds) {
+        if (seconds == null) return "";
+        const s = Math.round(seconds);
+        return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+      }
+
+      async function api(path, options = {}) {
+        if (options.body) {
+          options.headers = { "content-type": "application/json" };
+          options.body = JSON.stringify(options.body);
+        }
+        const response = await fetch(BASE + path, options);
+        if (response.status === 204) return null;
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(body.error ?? response.statusText);
+        return body;
+      }
+
+      let latest = 0;
+      async function search() {
+        const mine = ++latest;
+        const params = new URLSearchParams({ q: $("q").value, type: $("type").value });
+        try {
+          const { tracks, capped, published } = await api(`/api/search?${params}`);
+          if (mine !== latest) return;
+          const rows = tracks.map((t) => {
+            const tr = el("tr", null, { className: t.loose ? "loose" : "" });
+            const add = el("button", "+", { title: "Add to the draft" });
+            add.onclick = () => {
+              draft.entries.push({
+                fingerprint: t.fingerprint,
+                artist: t.artist,
+                title: t.title,
+                duration: t.duration,
+                contentType: t.contentType,
+              });
+              renderDraft();
+            };
+            tr.append(el("td"), el("td", t.title), el("td", t.artist), el("td", t.album), el("td", t.genre));
+            tr.firstChild.append(add);
+            tr.append(el("td", time(t.duration), { className: "num" }));
+            return tr;
+          });
+          $("results").replaceChildren(...rows);
+          const loose = tracks.filter((t) => t.loose).length;
+          $("status").className = "note";
+          $("status").textContent = !published
+            ? "The library has not been published to the hub yet."
+            : `${tracks.length} tracks` +
+            (capped ? ", the first of more" : "") +
+            (loose ? `; ${loose} in italics are near matches` : "");
+        } catch (e) {
+          if (mine !== latest) return;
+          $("status").className = "note error";
+          $("status").textContent = e.message;
+        }
+      }
+
+      function renderDraft() {
+        const rows = draft.entries.map((entry, i) => {
+          const tr = el("tr");
+          const move = (to) => () => {
+            draft.entries.splice(to, 0, ...draft.entries.splice(i, 1));
+            renderDraft();
+          };
+          const up = el("button", "↑", { disabled: i === 0, onclick: move(i - 1) });
+          const down = el("button", "↓", { disabled: i === draft.entries.length - 1, onclick: move(i + 1) });
+          const remove = el("button", "×", {
+            onclick: () => {
+              draft.entries.splice(i, 1);
+              renderDraft();
+            },
+          });
+          const buttons = el("td");
+          buttons.append(up, " ", down, " ", remove);
+          tr.append(
+            el("td", String(i + 1), { className: "num" }),
+            el("td", entry.title),
+            el("td", entry.artist),
+            el("td", time(entry.duration), { className: "num" }),
+            buttons,
+          );
+          return tr;
+        });
+        $("entries").replaceChildren(...rows);
+        const total = draft.entries.reduce((sum, e) => sum + (e.duration ?? 0), 0);
+        $("draft-heading").textContent = draft.id ? "Draft" : "New draft";
+        $("draft-status").className = "note";
+        $("draft-status").textContent = `${draft.entries.length} entries, ${time(total)}`;
+        $("download").disabled = !draft.id;
+      }
+
+      function show(saved) {
+        draft.id = saved.id;
+        draft.entries = saved.entries;
+        $("name").value = saved.name;
+        $("author").value = saved.author;
+        renderDraft();
+      }
+
+      async function loadDrafts() {
+        const drafts = await api("/api/drafts");
+        const items = drafts.map((d) => {
+          const li = el("li");
+          const open = el("button", "Open", { onclick: async () => show(await api(`/api/drafts/${d.id}`)) });
+          const remove = el("button", "Delete", {
+            onclick: async () => {
+              if (!confirm(`Delete the draft "${d.name}"?`)) return;
+              await api(`/api/drafts/${d.id}`, { method: "DELETE" });
+              if (draft.id === d.id) clear();
+              loadDrafts();
+            },
+          });
+          li.append(el("span", `${d.name} — ${d.author}, ${d.entryCount} entries, ${d.updatedAt}`), open, remove);
+          return li;
+        });
+        $("drafts").replaceChildren(...(items.length ? items : [el("li", "No drafts yet.", { className: "note" })]));
+      }
+
+      function clear() {
+        draft.id = null;
+        draft.entries = [];
+        $("name").value = "";
+        renderDraft();
+      }
+
+      $("save").onclick = async () => {
+        const body = { name: $("name").value, author: $("author").value, entries: draft.entries };
+        try {
+          show(
+            draft.id
+              ? await api(`/api/drafts/${draft.id}`, { method: "PUT", body })
+              : await api("/api/drafts", { method: "POST", body }),
+          );
+          $("draft-status").textContent += " — saved";
+          loadDrafts();
+        } catch (e) {
+          $("draft-status").className = "note error";
+          $("draft-status").textContent = e.message;
+        }
+      };
+      $("download").onclick = () => {
+        location.href = `${BASE}/api/drafts/${draft.id}/file`;
+      };
+      $("new").onclick = clear;
+
+      let timer;
+      $("q").oninput = () => {
+        clearTimeout(timer);
+        timer = setTimeout(search, 250);
+      };
+      $("type").onchange = search;
+
+      renderDraft();
+      search();
+      loadDrafts();
+    </script>
+  </body>
+</html>

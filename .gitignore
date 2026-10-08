@@ -1,0 +1,3 @@
+/target
+/k8s/secret.env
+/k8s/basic-auth.txt

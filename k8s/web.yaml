@@ -1,0 +1,69 @@
+# The web page backend. It applies its own schema on start, so there is no
+# migration job.
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+spec:
+  selector:
+    app: web
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      imagePullSecrets:
+        - name: regcred
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: web
+          image: library-search
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: BASIC_AUTH
+              valueFrom:
+                secretKeyRef:
+                  name: web-login
+                  key: login
+            - name: HUB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: hub
+                  key: password
+            - name: DATABASE_URL
+              value: postgres://library:$(HUB_PASSWORD)@postgres:5432/library
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 20m
+              memory: 32Mi
+            limits:
+              memory: 128Mi

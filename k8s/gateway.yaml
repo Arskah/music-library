@@ -1,0 +1,53 @@
+# Puts the page at https://music.aarnihalinen.fi through the cluster's shared
+# gateway. The gateway is not this repository's: it needs a listener named
+# `music` for the hostname, admitting this namespace and taking its
+# certificate from the secret below. See the README.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: tls-secret
+spec:
+  secretName: tls-secret
+  dnsNames:
+    - music.aarnihalinen.fi
+  issuerRef:
+    group: cert-manager.io
+    kind: ClusterIssuer
+    name: letsencrypt-production
+---
+# Lets the gateway, which lives in another namespace, read the certificate.
+apiVersion: gateway.networking.k8s.io/v1
+kind: ReferenceGrant
+metadata:
+  name: gateway-tls
+spec:
+  from:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      namespace: gateway
+  to:
+    - group: ""
+      kind: Secret
+      name: tls-secret
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: web
+spec:
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: public
+      namespace: gateway
+      sectionName: music
+  hostnames:
+    - music.aarnihalinen.fi
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: web
+          port: 80
