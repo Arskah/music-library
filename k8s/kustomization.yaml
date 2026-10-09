@@ -11,7 +11,7 @@ resources:
 images:
   - name: library-search
     newName: registry.aarnihalinen.fi/library-search
-    newTag: 0.3.0
+    newTag: 0.3.1
 
 # The secrets `hub` (database password), `web-login` (the page's shared login) and
 # `regcred` (registry pull secret) are not created here. They are SealedSecrets in

@@ -37,7 +37,6 @@ change and delete every one of them. Unset, the page is open.
 | `POST /api/drafts`          | a new draft: `name`, `author`, `entries`                    |
 | `GET/PUT/DELETE /api/drafts/{id}` | one draft                                             |
 | `GET /api/drafts/{id}/file` | the draft as a `radiodiodj-playlist` file                   |
-| `GET /healthz`              | 200 while Postgres answers                                  |
 
 Search is the app's: every word must match the start of a word in the title,
 artist, album, album artist or genre, in any order, with accents folded. When
@@ -49,7 +48,7 @@ A draft entry's fingerprint has to be in the catalogue, or already in the
 draft being saved.
 
 `BASE_PATH` mounts the page and its API below a path, for a host shared with
-something else. `/healthz` stays at the root and outside the login.
+something else.
 
 ## Run it locally
 
@@ -75,7 +74,7 @@ syncs it from `main`. Merging a change to `k8s` is the deploy.
 
 ```sh
 # Build for the cluster's architecture and push.
-docker build --platform linux/amd64 -t registry.aarnihalinen.fi/library-search:0.3.0 --push .
+docker build --platform linux/amd64 -t registry.aarnihalinen.fi/library-search:0.3.1 --push .
 ```
 
 ### Secrets

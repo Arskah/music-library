@@ -6,7 +6,7 @@ mod search;
 use std::{env, error::Error, net::SocketAddr, sync::Arc};
 
 use axum::{
-    extract::{Request, State},
+    extract::Request,
     http::{header, StatusCode},
     middleware::{self, Next},
     response::{Html, IntoResponse, Response},
@@ -76,8 +76,7 @@ async fn serve(pool: Pool) -> Result<(), Box<dyn Error>> {
         _ => tracing::warn!("BASIC_AUTH is not set: the page and every draft are open"),
     }
 
-    // Outside the base path and the login: the kubelet probes it.
-    let app = site.route("/healthz", get(healthz)).with_state(pool);
+    let app = site.with_state(pool);
 
     let listener = tokio::net::TcpListener::bind(addr).await?;
     tracing::info!("listening on {addr}");
@@ -109,13 +108,6 @@ async fn require_login(expected: Arc<str>, request: Request, next: Next) -> Resp
 /// first differ.
 fn same(a: &[u8], b: &[u8]) -> bool {
     a.len() == b.len() && a.iter().zip(b).fold(0, |acc, (x, y)| acc | (x ^ y)) == 0
-}
-
-async fn healthz(State(pool): State<Pool>) -> StatusCode {
-    match pool.get().await {
-        Ok(client) if client.simple_query("SELECT 1").await.is_ok() => StatusCode::OK,
-        _ => StatusCode::SERVICE_UNAVAILABLE,
-    }
 }
 
 async fn shutdown() {
