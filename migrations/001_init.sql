@@ -1,3 +1,12 @@
+-- The page's role. It owns nothing and may change no schema: it reads the
+-- catalogue and keeps the drafts. Its password is set by the run that applies
+-- this (src/db.rs).
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'web') THEN
+    CREATE ROLE web LOGIN;
+  END IF;
+END $$;
+
 CREATE EXTENSION IF NOT EXISTS unaccent;
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
@@ -52,3 +61,4 @@ CREATE TABLE IF NOT EXISTS web_drafts (
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
+GRANT SELECT, INSERT, UPDATE, DELETE ON web_drafts TO web;

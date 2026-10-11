@@ -11,9 +11,10 @@ resources:
 images:
   - name: library-search
     newName: registry.aarnihalinen.fi/library-search
-    newTag: 0.3.1
+    newTag: 0.4.0
 
-# The secrets `hub` (database password), `web-login` (the page's shared login) and
-# `regcred` (registry pull secret) are not created here. They are SealedSecrets in
+# The secrets `admin-password` (the database's `admin` password), `web-db` (the page's own
+# database password), `web-login` (the page's shared login) and `regcred`
+# (registry pull secret) are not created here. They are SealedSecrets in
 # github.com/Arskah/kube, sealed-secrets/, so that ArgoCD can render this directory
 # without files that are not committed.

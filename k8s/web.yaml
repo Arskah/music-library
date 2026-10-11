@@ -1,5 +1,6 @@
-# The web page backend. It applies its own schema on start, so there is no
-# migration job.
+# The web page backend. An init container applies the schema as `admin`; the
+# page itself connects as `web`, which can read the catalogue and keep the
+# drafts and nothing else.
 apiVersion: v1
 kind: Service
 metadata:
@@ -32,6 +33,36 @@ spec:
         runAsNonRoot: true
         seccompProfile:
           type: RuntimeDefault
+      initContainers:
+        # Waits for the database, applies the schema and sets the password
+        # `web` connects with.
+        - name: migrate
+          image: library-search
+          args: ["migrate"]
+          env:
+            - name: ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: admin-password
+                  key: password
+            - name: DATABASE_URL
+              value: postgres://admin:$(ADMIN_PASSWORD)@postgres:5432/library
+            - name: WEB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: web-db
+                  key: password
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 20m
+              memory: 32Mi
+            limits:
+              memory: 128Mi
       containers:
         - name: web
           image: library-search
@@ -44,21 +75,20 @@ spec:
                 secretKeyRef:
                   name: web-login
                   key: login
-            - name: HUB_PASSWORD
+            - name: WEB_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: hub
+                  name: web-db
                   key: password
             - name: DATABASE_URL
-              value: postgres://library:$(HUB_PASSWORD)@postgres:5432/library
+              value: postgres://web:$(WEB_PASSWORD)@postgres:5432/library
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
             capabilities:
               drop: ["ALL"]
-          # The port opens only after the schema is applied, so this waits
-          # for the database on start. Every route is behind the login, so
-          # there is nothing for an HTTP probe to ask.
+          # Every route is behind the login, so there is nothing for an HTTP
+          # probe to ask.
           readinessProbe:
             tcpSocket:
               port: http

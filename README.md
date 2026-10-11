@@ -74,17 +74,21 @@ syncs it from `main`. Merging a change to `k8s` is the deploy.
 
 ```sh
 # Build for the cluster's architecture and push.
-docker build --platform linux/amd64 -t registry.aarnihalinen.fi/library-search:0.3.1 --push .
+docker build --platform linux/amd64 -t registry.aarnihalinen.fi/library-search:0.4.0 --push .
 ```
 
 ### Secrets
 
-Three secrets in the namespace are not in this repository. They are SealedSecrets
+Four secrets in the namespace are not in this repository. They are SealedSecrets
 in Arskah/kube (`sealed-secrets/sealed-music-library-*.json`):
 
-- `hub`, key `password`: the database password. Postgres reads it only when it
-  first creates the database, so changing it later means changing it in Postgres
-  too.
+- `admin-password`, key `password`: the password of `admin`, the database's superuser.
+  Postgres reads it only when it first creates the database, so changing it
+  later means changing it in Postgres too.
+- `web-db`, key `password`: the password of `web`, the role the page connects
+  as. The `migrate` init container sets it on every start, so changing the
+  secret and restarting the page is enough. It goes into a URL as it is, so
+  letters and digits only.
 - `web-login`, key `login`: the page's shared login, as `user:password`.
 - `regcred`: the pull secret for `registry.aarnihalinen.fi`.
 
@@ -117,15 +121,34 @@ The certificate is cert-manager's to issue once the name resolves.
 
 ### Filling the library
 
-Nothing is seeded. Point a RadiodioDJ owner at the hub, from a machine with
-access to the cluster:
+Nothing is seeded. Point a RadiodioDJ owner at the hub. From outside the
+cluster that is the role `hub_owner`, over TLS, on the port the router forwards
+to `postgres-external` (node port 30432 on the worker node):
+
+```sh
+echo "postgres://hub_owner:<password>@music.aarnihalinen.fi:<port>/library?sslmode=verify-full"
+```
+
+The role is not created by anything here. Once, as `admin`:
+
+```sql
+CREATE ROLE hub_owner LOGIN PASSWORD '<password>';
+GRANT CREATE ON SCHEMA public TO hub_owner;
+-- Only if an owner has already published as `admin`:
+ALTER TABLE hub_rows OWNER TO hub_owner;
+```
+
+`k8s/postgres.yaml` holds the `pg_hba.conf` that keeps `admin`, a superuser,
+inside the cluster. Postgres serves the page's certificate, so the hostname is
+the page's. From a machine with access to the cluster, `admin` still works
+through a port-forward; the certificate does not match `127.0.0.1`, so the URL
+can ask for at most `sslmode=require`:
 
 ```sh
 kubectl -n music-library port-forward svc/postgres 5432:5432
-echo "postgres://library:$(cut -d= -f2 k8s/secret.env)@127.0.0.1:5432/library"
+echo "postgres://admin:$(cut -d= -f2 k8s/secret.env)@127.0.0.1:5432/library"
 ```
 
-The server has no TLS, so the URL must not ask for it with `sslmode=require`.
 The view over `hub_rows` stops a plain `DROP TABLE hub_rows`; a reset is
 `DROP TABLE hub_rows CASCADE`, and the view comes back with the next request.
 

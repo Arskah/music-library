@@ -4,23 +4,33 @@ services:
   postgres:
     image: postgres:18
     environment:
-      POSTGRES_USER: library
+      POSTGRES_USER: admin
       POSTGRES_PASSWORD: library
       POSTGRES_DB: library
     volumes:
       - ./dev/hub-sample.sql:/docker-entrypoint-initdb.d/hub-sample.sql:ro
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "library", "-d", "library"]
+      test: ["CMD", "pg_isready", "-U", "admin", "-d", "library"]
       interval: 2s
       timeout: 2s
       retries: 30
 
-  web:
+  migrate:
     build: .
+    command: ["migrate"]
     environment:
-      DATABASE_URL: postgres://library:library@postgres:5432/library
-    ports:
-      - "127.0.0.1:8080:8080"
+      DATABASE_URL: postgres://admin:library@postgres:5432/library
+      WEB_PASSWORD: web
     depends_on:
       postgres:
         condition: service_healthy
+
+  web:
+    build: .
+    environment:
+      DATABASE_URL: postgres://web:web@postgres:5432/library
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully

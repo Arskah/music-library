@@ -12,6 +12,45 @@ spec:
     - name: postgres
       port: 5432
 ---
+# The way in from outside the cluster, for an owner. The router forwards a
+# port to this one on the worker node, the only node Postgres can run on.
+# Local keeps the caller's address, which pg_hba.conf below sorts by.
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-external
+spec:
+  type: NodePort
+  externalTrafficPolicy: Local
+  selector:
+    app: postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres
+      nodePort: 30432
+---
+# Who may connect, and how. From outside the cluster only `hub_owner` gets
+# in, and only over TLS; `admin` is a superuser and stays inside, as does
+# the page's `web`.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-config
+data:
+  pg_hba.conf: |
+    # TYPE    DATABASE  USER       ADDRESS        METHOD
+    # The probe and the reload container, over the socket.
+    local     all       all                       trust
+    # kubectl port-forward arrives as the pod's own loopback.
+    host      all       all        127.0.0.1/32   scram-sha-256
+    host      all       all        ::1/128        scram-sha-256
+    # The backend, from the pod network: `admin` to apply the schema, `web`
+    # to serve the page. Its client has no TLS.
+    host      library   admin,web  10.244.0.0/16  scram-sha-256
+    # Everyone else.
+    hostssl   library   hub_owner  all            scram-sha-256
+---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -27,9 +66,23 @@ spec:
       labels:
         app: postgres
     spec:
+      # Lets Postgres read the certificate's key, which it refuses to use
+      # unless it is closed to everyone but root and its own group.
+      securityContext:
+        fsGroup: 999
+        fsGroupChangePolicy: OnRootMismatch
       containers:
         - name: postgres
           image: postgres:18
+          args:
+            - -c
+            - ssl=on
+            - -c
+            - ssl_cert_file=/tls/tls.crt
+            - -c
+            - ssl_key_file=/tls/tls.key
+            - -c
+            - hba_file=/etc/postgres/pg_hba.conf
           ports:
             - name: postgres
               containerPort: 5432
@@ -37,19 +90,25 @@ spec:
             - name: POSTGRES_DB
               value: library
             - name: POSTGRES_USER
-              value: library
+              value: admin
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: hub
+                  name: admin-password
                   key: password
           volumeMounts:
             - name: data
               mountPath: /var/lib/postgresql
               subPath: db
+            - name: config
+              mountPath: /etc/postgres
+            - name: tls
+              mountPath: /tls
+            - name: socket
+              mountPath: /var/run/postgresql
           readinessProbe:
             exec:
-              command: ["pg_isready", "-U", "library", "-d", "library"]
+              command: ["pg_isready", "-U", "admin", "-d", "library"]
             periodSeconds: 5
           resources:
             requests:
@@ -57,6 +116,38 @@ spec:
               memory: 128Mi
             limits:
               memory: 512Mi
+        # Postgres reads the certificate and pg_hba.conf only on start or
+        # reload, and cert-manager renews the certificate every two months.
+        - name: reload
+          image: postgres:18
+          command:
+            - sh
+            - -c
+            - while sleep 86400; do psql -U admin -d library -qc 'SELECT pg_reload_conf()'; done
+          securityContext:
+            runAsUser: 999
+            runAsGroup: 999
+          volumeMounts:
+            - name: socket
+              mountPath: /var/run/postgresql
+          resources:
+            requests:
+              cpu: 1m
+              memory: 8Mi
+            limits:
+              memory: 32Mi
+      volumes:
+        - name: config
+          configMap:
+            name: postgres-config
+        # The page's certificate, from gateway.yaml: outside, Postgres is
+        # reached by the same hostname.
+        - name: tls
+          secret:
+            secretName: tls-secret
+            defaultMode: 0440
+        - name: socket
+          emptyDir: {}
   volumeClaimTemplates:
     - metadata:
         name: data

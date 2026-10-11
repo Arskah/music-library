@@ -138,7 +138,7 @@ async fn validate(
         .collect();
     if !new.is_empty() {
         let mut known: HashSet<String> = HashSet::new();
-        if db::catalogue(client, false).await? {
+        if db::catalogue(client).await? {
             let rows = client
                 .query(
                     "SELECT DISTINCT fingerprint FROM hub_catalogue WHERE fingerprint = ANY($1)",

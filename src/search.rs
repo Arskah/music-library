@@ -92,8 +92,8 @@ pub async fn search(
         }
     }
     let tokens = tokens(&params.q);
-    let mut client = pool.get().await?;
-    if !db::catalogue(&mut client, false).await? {
+    let client = pool.get().await?;
+    if !db::catalogue(&client).await? {
         return Ok(Json(Results {
             tracks: Vec::new(),
             capped: false,

@@ -24,7 +24,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let url = env::var("DATABASE_URL").map_err(|_| "DATABASE_URL is not set")?;
     let pool = db::connect(&url)?;
-    db::migrate(&pool).await?;
+
+    // The schema is applied by a run of its own, as a role that may change
+    // it. The page then connects as `web`, which may not.
+    if env::args().nth(1).as_deref() == Some("migrate") {
+        let password = env::var("WEB_PASSWORD").map_err(|_| "WEB_PASSWORD is not set")?;
+        return db::migrate(&pool, &password).await;
+    }
 
     serve(pool).await
 }
