@@ -131,7 +131,13 @@ echo "postgres://hub_owner:<password>@music.aarnihalinen.fi:<port>/library"
 
 No `sslmode`: the app always asks for TLS and checks the certificate against
 the hostname, and its URL parser knows no `verify-full`. `psql` does, and
-should be given it.
+should be given it, with the authorities to check against: it does not look
+in the system's on its own. `sslrootcert=system` from libpq 16 on, and before
+that the bundle's path, `/etc/ssl/cert.pem` on a Mac:
+
+```sh
+psql "postgres://hub_owner:<password>@music.aarnihalinen.fi:<port>/library?sslmode=verify-full&sslrootcert=system"
+```
 
 The role is not created by anything here. Once, as `admin`:
 
