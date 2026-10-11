@@ -9,8 +9,10 @@ description = "Web page backend for searching a RadiodioDJ library through the P
 axum = "0.8"
 base64 = "0.22"
 deadpool-postgres = "0.14"
+hmac = "0.13"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+sha2 = "0.11"
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "signal", "net"] }
 tokio-postgres = { version = "0.7", features = ["with-serde_json-1", "with-uuid-1"] }
 tracing = "0.1"

@@ -46,6 +46,27 @@
           grid-template-columns: minmax(0, 1fr);
         }
       }
+      #on-air {
+        display: flex;
+        gap: 8px;
+        align-items: baseline;
+        max-width: 1500px;
+        margin: 0 auto;
+        padding: 16px 16px 0;
+      }
+      #on-air[hidden] {
+        display: none;
+      }
+      #on-air b {
+        color: var(--accent);
+        font-weight: 600;
+      }
+      #on-air span {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
       section {
         background: var(--panel);
         border: 1px solid var(--line);
@@ -144,6 +165,11 @@
     </style>
   </head>
   <body>
+    <header id="on-air" hidden>
+      <b>On air</b>
+      <span id="on-air-track"></span>
+      <span id="on-air-time" class="note"></span>
+    </header>
     <main>
       <section>
         <h2>Library</h2>
@@ -332,6 +358,35 @@
         $("drafts").replaceChildren(...(items.length ? items : [el("li", "No drafts yet.", { className: "note" })]));
       }
 
+      // How often the page asks what is on air, and how long past its end a
+      // track is still believed: the app sends no `stopped` when it crashes.
+      const ON_AIR_EVERY = 10_000;
+      const ON_AIR_GRACE = 60_000;
+
+      async function onAir() {
+        let event = null;
+        try {
+          const response = await fetch(`${BASE}/api/now-playing`);
+          // No webhook on this server: there will never be anything to show.
+          if (response.status === 404) return;
+          if (response.ok) event = await response.json();
+        } catch {
+          // Unreachable for now; ask again.
+        }
+        const track = event?.event === "now_playing" ? event.track : null;
+        const started = track ? Date.parse(event.startedAt) : NaN;
+        const on = track && Date.now() < started + track.durationSec * 1000 + ON_AIR_GRACE;
+        $("on-air").hidden = !on;
+        if (on) {
+          const artist = track.artist.trim();
+          const title = track.title.trim();
+          $("on-air-track").textContent = artist ? `${artist} – ${title}` : title;
+          const at = new Date(started).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+          $("on-air-time").textContent = `${time(track.durationSec)}, started ${at}`;
+        }
+        setTimeout(onAir, ON_AIR_EVERY);
+      }
+
       function clear() {
         draft.id = null;
         draft.entries = [];
@@ -369,6 +424,7 @@
       renderDraft();
       search();
       loadDrafts();
+      onAir();
     </script>
   </body>
 </html>

@@ -37,6 +37,8 @@ change and delete every one of them. Unset, the page is open.
 | `POST /api/drafts`          | a new draft: `name`, `author`, `entries`                    |
 | `GET/PUT/DELETE /api/drafts/{id}` | one draft                                             |
 | `GET /api/drafts/{id}/file` | the draft as a `radiodiodj-playlist` file                   |
+| `POST /api/webhook`         | the app's now-playing webhook; signed, not behind the login |
+| `GET /api/now-playing`      | the last `now_playing` or `stopped` event, `null` before one |
 
 Search is the app's: every word must match the start of a word in the title,
 artist, album, album artist or genre, in any order, with accents folded. When
@@ -49,6 +51,28 @@ draft being saved.
 
 `BASE_PATH` mounts the page and its API below a path, for a host shared with
 something else.
+
+### The now-playing webhook
+
+`WEBHOOK_SECRET` turns on `POST /api/webhook`, for RadiodioDJ's now-playing
+broadcast (its `docs/now-playing-broadcast.md`). Set the same value as the
+webhook secret in the app, and <https://music.aarnihalinen.fi/api/webhook> as
+its URL. Unset, neither route is there.
+
+The app cannot answer the login, so the endpoint is outside it. What it asks
+for instead is `X-RadiodioDJ-Signature: sha256=<hex>`, the HMAC-SHA256 of the
+body under the secret: `401` without a valid one, `400` for a body that is not
+one of the app's events, `204` otherwise. The signature covers the body and
+nothing else, so a captured request can be sent again; the worst that does is
+put an old track back as the current one.
+
+The last `now_playing` or `stopped` is kept in memory, without the track's
+`id` and `path`, and `GET /api/now-playing` hands it back behind the login. A
+restart forgets it. A `test` event is checked and logged, not kept. The page
+asks every ten seconds and shows the track above the library while it is on:
+until a `stopped`, or a minute past the track's own length. The app
+sends no `stopped` when it crashes, so a reader has to judge by `startedAt`
+and `durationSec` whether the track is still on.
 
 ## Run it locally
 
@@ -79,7 +103,7 @@ docker build --platform linux/amd64 -t registry.aarnihalinen.fi/library-search:0
 
 ### Secrets
 
-Four secrets in the namespace are not in this repository. They are SealedSecrets
+Five secrets in the namespace are not in this repository. They are SealedSecrets
 in Arskah/kube (`sealed-secrets/sealed-music-library-*.json`):
 
 - `admin-password`, key `password`: the password of `admin`, the database's superuser.
@@ -90,6 +114,8 @@ in Arskah/kube (`sealed-secrets/sealed-music-library-*.json`):
   secret and restarting the page is enough. It goes into a URL as it is, so
   letters and digits only.
 - `web-login`, key `login`: the page's shared login, as `user:password`.
+- `web-webhook`, key `secret`: what the app signs its now-playing events with.
+  Optional: without it the page starts with no webhook endpoint.
 - `regcred`: the pull secret for `registry.aarnihalinen.fi`.
 
 A new image needs a new tag in `k8s/kustomization.yaml`.

@@ -14,7 +14,7 @@ images:
     newTag: 0.4.0
 
 # The secrets `admin-password` (the database's `admin` password), `web-db` (the page's own
-# database password), `web-login` (the page's shared login) and `regcred`
-# (registry pull secret) are not created here. They are SealedSecrets in
+# database password), `web-login` (the page's shared login), `web-webhook` (the now-playing
+# webhook's signing secret) and `regcred` (registry pull secret) are not created here. They are SealedSecrets in
 # github.com/Arskah/kube, sealed-secrets/, so that ArgoCD can render this directory
 # without files that are not committed.

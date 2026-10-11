@@ -2,15 +2,16 @@ mod db;
 mod drafts;
 mod error;
 mod search;
+mod webhook;
 
 use std::{env, error::Error, net::SocketAddr, sync::Arc};
 
 use axum::{
-    extract::Request,
+    extract::{DefaultBodyLimit, Request},
     http::{header, StatusCode},
     middleware::{self, Next},
     response::{Html, IntoResponse, Response},
-    routing::get,
+    routing::{get, post},
     Router,
 };
 use base64::{engine::general_purpose::STANDARD, Engine};
@@ -62,6 +63,24 @@ async fn serve(pool: Pool) -> Result<(), Box<dyn Error>> {
             get(drafts::get).put(drafts::update).delete(drafts::delete),
         )
         .route("/api/drafts/{id}/file", get(drafts::file));
+
+    // The app signs its now-playing events with a secret both sides hold.
+    // Without one there is nothing to tell the app from anyone else, so the
+    // endpoint is not there at all.
+    let hook = match env::var("WEBHOOK_SECRET") {
+        Ok(secret) if !secret.trim().is_empty() => Some(webhook::Hook::new(secret.trim())),
+        _ => {
+            tracing::info!("WEBHOOK_SECRET is not set: no webhook endpoint");
+            None
+        }
+    };
+    let site = match &hook {
+        Some(hook) => site.route(
+            "/api/now-playing",
+            get(webhook::now_playing).with_state(hook.clone()),
+        ),
+        None => site,
+    };
     let mut site = if base.is_empty() {
         site
     } else {
@@ -80,6 +99,17 @@ async fn serve(pool: Pool) -> Result<(), Box<dyn Error>> {
             }));
         }
         _ => tracing::warn!("BASIC_AUTH is not set: the page and every draft are open"),
+    }
+
+    // Added after the login: the app cannot answer one, and the signature is
+    // what vouches for it.
+    if let Some(hook) = hook {
+        site = site.route(
+            &format!("{base}/api/webhook"),
+            post(webhook::receive)
+                .layer(DefaultBodyLimit::max(webhook::MAX_BODY))
+                .with_state(hook),
+        );
     }
 
     let app = site.with_state(pool);

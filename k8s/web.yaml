@@ -75,6 +75,14 @@ spec:
                 secretKeyRef:
                   name: web-login
                   key: login
+            # Optional so that the page starts before the secret is sealed;
+            # it then has no webhook endpoint.
+            - name: WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: web-webhook
+                  key: secret
+                  optional: true
             - name: WEB_PASSWORD
               valueFrom:
                 secretKeyRef:
@@ -87,8 +95,8 @@ spec:
             readOnlyRootFilesystem: true
             capabilities:
               drop: ["ALL"]
-          # Every route is behind the login, so there is nothing for an HTTP
-          # probe to ask.
+          # Every route asks for the login or a signature, so there is nothing
+          # for an HTTP probe to ask.
           readinessProbe:
             tcpSocket:
               port: http
