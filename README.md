@@ -126,8 +126,12 @@ cluster that is the role `hub_owner`, over TLS, on the port the router forwards
 to `postgres-external` (node port 30432 on the worker node):
 
 ```sh
-echo "postgres://hub_owner:<password>@music.aarnihalinen.fi:<port>/library?sslmode=verify-full"
+echo "postgres://hub_owner:<password>@music.aarnihalinen.fi:<port>/library"
 ```
+
+No `sslmode`: the app always asks for TLS and checks the certificate against
+the hostname, and its URL parser knows no `verify-full`. `psql` does, and
+should be given it.
 
 The role is not created by anything here. Once, as `admin`:
 
