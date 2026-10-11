@@ -12,8 +12,9 @@ spec:
     - name: postgres
       port: 5432
 ---
-# The way in from outside the cluster, for an owner. The router forwards a
-# port to this one on the worker node, the only node Postgres can run on.
+# The way in from outside the cluster, for an owner and the studios. The
+# router forwards a port to this one on the worker node, the only node
+# Postgres can run on.
 # Local keeps the caller's address, which pg_hba.conf below sorts by.
 apiVersion: v1
 kind: Service
@@ -30,26 +31,26 @@ spec:
       targetPort: postgres
       nodePort: 30432
 ---
-# Who may connect, and how. From outside the cluster only `hub_owner` gets
-# in, and only over TLS; `admin` is a superuser and stays inside, as does
-# the page's `web`.
+# Who may connect, and how. From outside the cluster only `hub_owner` and
+# `studio` get in, and only over TLS; `admin` is a superuser and stays
+# inside, as does the page's `web`.
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: postgres-config
 data:
   pg_hba.conf: |
-    # TYPE    DATABASE  USER       ADDRESS        METHOD
+    # TYPE    DATABASE  USER              ADDRESS        METHOD
     # The probe and the reload container, over the socket.
-    local     all       all                       trust
+    local     all       all                              trust
     # kubectl port-forward arrives as the pod's own loopback.
-    host      all       all        127.0.0.1/32   scram-sha-256
-    host      all       all        ::1/128        scram-sha-256
+    host      all       all               127.0.0.1/32   scram-sha-256
+    host      all       all               ::1/128        scram-sha-256
     # The backend, from the pod network: `admin` to apply the schema, `web`
     # to serve the page. Its client has no TLS.
-    host      library   admin,web  10.244.0.0/16  scram-sha-256
+    host      library   admin,web         10.244.0.0/16  scram-sha-256
     # Everyone else.
-    hostssl   library   hub_owner  all            scram-sha-256
+    hostssl   library   hub_owner,studio  all            scram-sha-256
 ---
 apiVersion: apps/v1
 kind: StatefulSet

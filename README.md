@@ -142,6 +142,28 @@ GRANT CREATE ON SCHEMA public TO hub_owner;
 ALTER TABLE hub_rows OWNER TO hub_owner;
 ```
 
+A studio connects the same way as the role `studio`, which every studio
+machine shares: the hub tells them apart by machine id. It moves rows and can
+change no table, which matters because the address sits in the machine's
+`config.json` with its password. Once, as `admin`, after an owner has
+published:
+
+```sql
+CREATE ROLE studio LOGIN PASSWORD '<password>';
+GRANT SELECT, UPDATE ON hub_station TO studio;
+GRANT SELECT, INSERT, UPDATE ON hub_machines TO studio;
+GRANT SELECT, INSERT, UPDATE ON hub_rows TO studio;
+GRANT USAGE ON SEQUENCE hub_rev TO studio;
+-- For the tables an owner makes again after a reset:
+ALTER DEFAULT PRIVILEGES FOR ROLE hub_owner IN SCHEMA public
+  GRANT SELECT, INSERT, UPDATE ON TABLES TO studio;
+ALTER DEFAULT PRIVILEGES FOR ROLE hub_owner IN SCHEMA public
+  GRANT USAGE ON SEQUENCES TO studio;
+```
+
+Nothing in Postgres keeps a studio from writing a track: that only the owner
+publishes the library is the app's rule.
+
 `k8s/postgres.yaml` holds the `pg_hba.conf` that keeps `admin`, a superuser,
 inside the cluster. Postgres serves the page's certificate, so the hostname is
 the page's. From a machine with access to the cluster, `admin` still works
