@@ -26,6 +26,16 @@ describe("draftInput", () => {
     });
   });
 
+  it("trims, and refuses what the app could not import", () => {
+    expect(draftInput.parse({ name: " n ", author: "a" }).name).toBe("n");
+    expect(() => draftInput.parse({ name: "  ", author: "a" })).toThrow("name must be 1 to 200");
+    expect(() => draftInput.parse({ name: "n", author: "a".repeat(201) })).toThrow("author");
+    const entry = (e: object) => ({ name: "n", author: "a", entries: [{ fingerprint: "f", ...e }] });
+    expect(() => draftInput.parse(entry({ contentType: "talk" }))).toThrow();
+    expect(() => draftInput.parse(entry({ duration: -1 }))).toThrow("duration must be 0 or more");
+    expect(() => draftInput.parse(entry({ duration: Infinity }))).toThrow();
+  });
+
   it("refuses the wrong shape", () => {
     expect(() => draftInput.parse({ name: 1, author: "a" })).toThrow();
     expect(() => draftInput.parse({ name: "n", author: "a", entries: [{}] })).toThrow();

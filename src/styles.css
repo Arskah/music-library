@@ -161,3 +161,6 @@ li span {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.drafts {
+  margin-top: 16px;
+}

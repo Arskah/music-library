@@ -14,17 +14,29 @@ export const entry = z.object({
   fingerprint: z.string(),
   artist: nullable(z.string()),
   title: nullable(z.string()),
-  duration: nullable(z.number()),
-  contentType: nullable(z.string()),
+  duration: nullable(z.number().nonnegative("duration must be 0 or more")),
+  contentType: nullable(contentType),
 });
 export type Entry = z.infer<typeof entry>;
 
+const MAX_ENTRIES = 2000;
+const MAX_NAME = 200;
+const text = (field: string) =>
+  z
+    .string()
+    .trim()
+    .min(1, `${field} must be 1 to ${MAX_NAME} characters`)
+    .max(MAX_NAME, `${field} must be 1 to ${MAX_NAME} characters`);
+
+/** A draft as it is saved, trimmed. */
 export const draftInput = z.object({
-  name: z.string(),
-  author: z.string(),
-  entries: z.array(entry).default([]),
+  name: text("name"),
+  author: text("author"),
+  entries: z.array(entry).max(MAX_ENTRIES, `a draft holds at most ${MAX_ENTRIES} entries`).default([]),
 });
 export type DraftInput = z.infer<typeof draftInput>;
+
+export const draftId = z.uuid("invalid draft id");
 
 export type Draft = DraftInput & {
   id: string;

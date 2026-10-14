@@ -89,9 +89,10 @@ fingerprints match no audio file, so a playlist file from a local run imports
 into the app with every entry unmatched. `docker compose down -v` removes it.
 
 It is a [TanStack Start](https://tanstack.com/start) app on Node. The page,
-`src/routes/index.tsx`, keeps its search and the open draft in its URL and
-reads and writes through the server functions in `src/functions.ts`; the API
-is the server routes under `src/routes/api`. Both call `src/server`, whose
+`src/routes/index.tsx`, keeps its search and the open draft in its URL. It
+reads and writes through the server functions in `src/functions.ts`, by way of
+TanStack Query (`src/queries.ts`), and its parts are in `src/components`; the
+API is the server routes under `src/routes/api`. Both call `src/server`, whose
 `*.server.ts` files the page's bundle is refused, and share the shapes in
 `src/schema.ts`. `main.ts` is the image's entrypoint, which
 either applies the schema (`migrate`) or serves the handler Nitro builds,

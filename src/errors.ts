@@ -5,8 +5,7 @@ import { z } from "zod";
 // too, where Start strips what runs on the server.
 //
 // An error the API answers with is a Response, `{ "error": message }`, for
-// the code to throw. Start sends a thrown Response as it is, and hands one
-// thrown in a server function to the page that called it.
+// the code to throw. Start sends one thrown in a server route as it is.
 const error = (status: number, message: string) => Response.json({ error: message }, { status });
 
 export const badRequest = (message: string) => error(400, message);
@@ -15,30 +14,32 @@ export const notFound = () => error(404, "not found");
 export const tooLarge = () => error(413, "body too large");
 export const unprocessable = (message: string) => error(422, message);
 
-/** A thrown Response as it is, a schema's refusal as a 422, and anything
- * else, logged, as `otherwise()`: no Postgres message reaches the page. */
-function settle(e: unknown, otherwise: () => unknown): unknown {
+/** What a thrown error answers with: a Response as it is, a schema's refusal
+ * as a 422, and anything else, logged, as a bare 500, so no Postgres message
+ * reaches the page. */
+function answer(e: unknown): Response {
   if (e instanceof Response) return e;
   if (e instanceof z.ZodError) return unprocessable(z.prettifyError(e));
   console.error(e);
-  return otherwise();
+  return error(500, "internal error");
 }
 
-/** For the API's server routes: a bare 500. */
+/** For the API's server routes. */
 export const apiErrors = createMiddleware().server(async ({ next }) => {
   try {
     return await next();
   } catch (e) {
-    throw settle(e, () => error(500, "internal error"));
+    throw answer(e);
   }
 });
 
-/** For every server function: an Error, which a loader's error component
- * shows, where a Response thrown during rendering would end the page. */
+/** For every server function: the answer's message as an Error, which Start
+ * hands to the page that called it, or to a loader's error component. */
 export const functionErrors = createMiddleware({ type: "function" }).server(async ({ next }) => {
   try {
     return await next();
   } catch (e) {
-    throw settle(e, () => new Error("internal error"));
+    const { error } = await answer(e).json();
+    throw new Error(error);
   }
 });
