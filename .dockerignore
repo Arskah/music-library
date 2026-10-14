@@ -1,6 +1,11 @@
 *
-!Cargo.toml
-!Cargo.lock
+!package.json
+!pnpm-lock.yaml
+!tsconfig.json
+!vite.config.ts
+!main.ts
+!base.ts
+!rolldown.config.ts
 !src
 !migrations
-!web
+src/**/*.test.ts

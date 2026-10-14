@@ -50,7 +50,10 @@ A draft entry's fingerprint has to be in the catalogue, or already in the
 draft being saved.
 
 `BASE_PATH` mounts the page and its API below a path, for a host shared with
-something else.
+something else. It is read when the image is built, not when it runs: the
+router and the asset URLs are compiled with it
+(`docker build --build-arg BASE_PATH=/library`). A request outside the path
+is redirected into it.
 
 ### The now-playing webhook
 
@@ -84,6 +87,24 @@ The page is at <http://127.0.0.1:8080>, over a throwaway Postgres that
 `dev/hub-sample.sql` fills as an owner would, with made-up tracks. Their
 fingerprints match no audio file, so a playlist file from a local run imports
 into the app with every entry unmatched. `docker compose down -v` removes it.
+
+It is a [TanStack Start](https://tanstack.com/start) app on Node: the page is
+`src/routes/index.tsx`, the API is the server routes under `src/routes/api`,
+and what they do is in `src/server`. `main.ts` is the image's entrypoint, which
+either applies the schema (`migrate`) or serves the handler Nitro builds,
+with the login in front of all of it, the page's scripts and styles included.
+The toolchain comes from [mise](https://mise.jdx.dev) and pnpm from corepack:
+
+```sh
+mise install
+pnpm install
+pnpm test && pnpm typecheck
+pnpm build
+DATABASE_URL=postgres://web:web@127.0.0.1:5432/library pnpm start
+```
+
+`pnpm dev` serves the page with hot reload; it needs `DATABASE_URL` too, and
+asks for no login whatever `BASIC_AUTH` says, since the login is `main.ts`'s.
 
 ## Deploy to the cluster
 
