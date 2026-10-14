@@ -1,6 +1,6 @@
 -- The page's role. It owns nothing and may change no schema: it reads the
 -- catalogue and keeps the drafts. Its password is set by the run that applies
--- this (src/db.rs).
+-- this (src/server/db.ts).
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'web') THEN
     CREATE ROLE web LOGIN;

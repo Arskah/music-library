@@ -1,28 +1,22 @@
 # syntax=docker/dockerfile:1
 
-# The compiler runs on the build machine's own architecture and cross-compiles
-# to the target's, so an arm64 laptop builds an amd64 image without emulation.
-# Every dependency is pure Rust, which is what lets rust-lld link it alone.
-FROM --platform=$BUILDPLATFORM rust:1.99-bookworm AS build
-ARG TARGETARCH
-RUN case "$TARGETARCH" in \
-      amd64) echo x86_64-unknown-linux-musl ;; \
-      arm64) echo aarch64-unknown-linux-musl ;; \
-      *) echo "unsupported architecture: $TARGETARCH" >&2; exit 1 ;; \
-    esac > /rust-target \
- && rustup target add "$(cat /rust-target)"
+# The build runs on the build machine's own architecture: its output is plain
+# JavaScript with every dependency bundled in, so an arm64 laptop builds an
+# amd64 image without emulation.
+FROM --platform=$BUILDPLATFORM node:24-trixie-slim AS build
+RUN corepack enable
 WORKDIR /src
-COPY Cargo.toml Cargo.lock ./
-COPY src ./src
-COPY migrations ./migrations
-COPY web ./web
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
-    --mount=type=cache,target=/src/target,sharing=locked \
-    RUSTFLAGS="-C linker=rust-lld" \
-    cargo build --release --locked --target "$(cat /rust-target)" \
- && cp "target/$(cat /rust-target)/release/library-search" /library-search
+COPY package.json pnpm-lock.yaml ./
+RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile
+COPY . .
+# The path the page is mounted under, if not the root. The router and the
+# asset URLs are compiled with it.
+ARG BASE_PATH=
+RUN BASE_PATH="$BASE_PATH" pnpm build
 
-FROM gcr.io/distroless/static-debian12:nonroot
-COPY --from=build /library-search /library-search
+FROM gcr.io/distroless/nodejs24-debian13:nonroot
+WORKDIR /app
+COPY --from=build /src/.output ./
 EXPOSE 8080
-ENTRYPOINT ["/library-search"]
+ENTRYPOINT ["/nodejs/bin/node", "/app/main.mjs"]

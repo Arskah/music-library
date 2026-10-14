@@ -1,0 +1,166 @@
+:root {
+  color-scheme: light dark;
+  --bg: #f6f6f4;
+  --panel: #ffffff;
+  --line: #d9d9d4;
+  --text: #1c1c1a;
+  --dim: #6b6b66;
+  --accent: #b3261e;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #161615;
+    --panel: #1f1f1d;
+    --line: #353532;
+    --text: #ecece8;
+    --dim: #9a9a94;
+    --accent: #ff8a80;
+  }
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.4 system-ui, sans-serif;
+}
+main {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 16px;
+  padding: 16px;
+  max-width: 1500px;
+  margin: 0 auto;
+}
+@media (max-width: 900px) {
+  main {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+#on-air {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  max-width: 1500px;
+  margin: 0 auto;
+  padding: 16px 16px 0;
+}
+#on-air[hidden] {
+  display: none;
+}
+#on-air b {
+  color: var(--accent);
+  font-weight: 600;
+}
+#on-air span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+section {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 12px;
+  min-width: 0;
+}
+h2 {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+.row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+input,
+select,
+button,
+.button {
+  font: inherit;
+  color: inherit;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 6px 8px;
+}
+input {
+  flex: 1;
+  min-width: 0;
+}
+button,
+.button {
+  cursor: pointer;
+}
+.button {
+  display: inline-block;
+  text-decoration: none;
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.scroll {
+  overflow-x: auto;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+th,
+td {
+  text-align: left;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 260px;
+}
+th {
+  color: var(--dim);
+  font-weight: 500;
+}
+td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+td button {
+  padding: 1px 7px;
+}
+tr.loose td {
+  color: var(--dim);
+  font-style: italic;
+}
+.note {
+  color: var(--dim);
+  margin: 6px 0;
+}
+.error {
+  color: var(--accent);
+}
+ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+li {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--line);
+}
+li span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.drafts {
+  margin-top: 16px;
+}

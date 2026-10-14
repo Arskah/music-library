@@ -1,0 +1,42 @@
+{
+  "name": "library-search",
+  "version": "0.6.0",
+  "private": true,
+  "license": "GPL-3.0-or-later",
+  "description": "Web page backend for searching a RadiodioDJ library through the Postgres hub",
+  "type": "module",
+  "packageManager": "pnpm@12.11.2",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "vite dev --port 8080",
+    "build": "vite build && rolldown -c rolldown.config.ts && cp -R migrations .output/",
+    "start": "node .output/main.mjs",
+    "migrate": "node .output/main.mjs migrate",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.104.2",
+    "@tanstack/react-router": "^1.170.44",
+    "@tanstack/react-router-ssr-query": "^1.167.3",
+    "@tanstack/react-start": "^1.169.1",
+    "pg": "^8.23.1",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "@types/pg": "^8.23.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "nitro": "3.0.260903-beta",
+    "rolldown": "1.2.13",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4",
+    "vitest": "^5.0.4"
+  }
+}

@@ -13,7 +13,7 @@ CREATE OR REPLACE FUNCTION build_catalogue() RETURNS void
   LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp
   AS $fn$
 BEGIN
-  -- The same lock as the schema's own run (src/db.rs).
+  -- The same lock as the schema's own run (src/server/db.ts).
   PERFORM pg_advisory_xact_lock(505001);
 
   CREATE INDEX IF NOT EXISTS hub_rows_track_search ON hub_rows
