@@ -1,9 +1,5 @@
-import type pg from "pg";
-
-import { catalogue, withClient } from "./db.ts";
-import { badRequest } from "./errors.ts";
-
-export const CONTENT_TYPES = ["music", "jingle", "commercial"];
+import type { Results, SearchInput, Track } from "../schema.ts";
+import { catalogue, withClient } from "./db.server.ts";
 
 /** The app's own cap (`Db::search`). */
 const LIMIT = 200;
@@ -17,27 +13,6 @@ const COLUMNS = `c.track_id AS "trackId", c.fingerprint, c.title, c.artist, c.al
                  c.album_artist AS "albumArtist", c.genre, c.duration,
                  c.content_type AS "contentType"`;
 
-export type Track = {
-  trackId: number;
-  fingerprint: string;
-  title: string | null;
-  artist: string | null;
-  album: string | null;
-  albumArtist: string | null;
-  genre: string | null;
-  duration: number | null;
-  contentType: string;
-  /** Found by the loose pass, not by the words as typed. */
-  loose: boolean;
-};
-
-export type Results = {
-  tracks: Track[];
-  capped: boolean;
-  /** False until an owner has created the hub's tables. */
-  published: boolean;
-};
-
 /** Splits where FTS5's `unicode61` would, so `ac/dc` is two words here too. */
 export function tokens(query: string): string[] {
   return query
@@ -50,14 +25,11 @@ export function tokens(query: string): string[] {
 const tracks = (rows: Omit<Track, "loose">[], loose: boolean): Track[] =>
   rows.map((row) => ({ ...row, loose }));
 
-export async function search(q: string, type: string | null): Promise<Results> {
-  const contentType = type || null;
-  if (contentType !== null && !CONTENT_TYPES.includes(contentType)) {
-    throw badRequest(`unknown content type ${JSON.stringify(contentType)}`);
-  }
+export function search({ q, type }: SearchInput): Promise<Results> {
+  const contentType = type ?? null;
   const words = tokens(q);
 
-  return withClient(async (client: pg.PoolClient) => {
+  return withClient(async (client) => {
     if (!(await catalogue(client))) {
       return { tracks: [], capped: false, published: false };
     }

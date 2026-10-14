@@ -1,12 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { file } from "../../../../server/drafts.ts";
-import { api } from "../../../../server/errors.ts";
+import { file } from "../../../../server/drafts.server.ts";
+import { apiErrors } from "../../../../errors.ts";
 
 export const Route = createFileRoute("/api/drafts/$id/file")({
   server: {
+    middleware: [apiErrors],
     handlers: {
-      GET: ({ params }) => api(() => file(params.id)),
+      GET: ({ params }) => file(params.id),
     },
   },
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { parseEvent, signed } from "./webhook.ts";
+import { parseEvent, signed } from "./webhook.server.ts";
 
 // The app's own regression value: HMAC-SHA256("hello", b"hi").
 const HI = "sha256=42eb9553cf9288e53d3389208d00db1ac80d3666f1fa74fe02e1038672d0c83a";

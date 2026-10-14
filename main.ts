@@ -4,8 +4,8 @@
 import { readFileSync } from "node:fs";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 
-import { CHALLENGE, expected, same } from "./src/server/auth.ts";
-import { connect, migrate } from "./src/server/db.ts";
+import { CHALLENGE, expected, same } from "./src/server/auth.server.ts";
+import { connect, migrate } from "./src/server/db.server.ts";
 
 type Handler = (req: IncomingMessage, res: ServerResponse) => void;
 

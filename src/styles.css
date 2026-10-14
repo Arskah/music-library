@@ -78,7 +78,8 @@ h2 {
 }
 input,
 select,
-button {
+button,
+.button {
   font: inherit;
   color: inherit;
   background: var(--bg);
@@ -90,8 +91,13 @@ input {
   flex: 1;
   min-width: 0;
 }
-button {
+button,
+.button {
   cursor: pointer;
+}
+.button {
+  display: inline-block;
+  text-decoration: none;
 }
 button:disabled {
   opacity: 0.5;

@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { parseInput, stem } from "./drafts.ts";
-import { tokens } from "./search.ts";
+import { draftInput } from "../schema.ts";
+import { stem } from "./drafts.server.ts";
+import { tokens } from "./search.server.ts";
 
 describe("tokens", () => {
   it("splits where FTS5's unicode61 would", () => {
@@ -14,10 +15,10 @@ describe("tokens", () => {
   });
 });
 
-describe("parseInput", () => {
+describe("draftInput", () => {
   it("keeps exactly the file's entry keys", () => {
     expect(
-      parseInput({ name: "n", author: "a", entries: [{ fingerprint: "f", title: "t", extra: 1 }] }),
+      draftInput.parse({ name: "n", author: "a", entries: [{ fingerprint: "f", title: "t", extra: 1 }] }),
     ).toEqual({
       name: "n",
       author: "a",
@@ -26,9 +27,9 @@ describe("parseInput", () => {
   });
 
   it("refuses the wrong shape", () => {
-    expect(() => parseInput({ name: 1, author: "a" })).toThrow();
-    expect(() => parseInput({ name: "n", author: "a", entries: [{}] })).toThrow();
-    expect(() => parseInput([])).toThrow();
+    expect(() => draftInput.parse({ name: 1, author: "a" })).toThrow();
+    expect(() => draftInput.parse({ name: "n", author: "a", entries: [{}] })).toThrow();
+    expect(() => draftInput.parse([])).toThrow();
   });
 });
 

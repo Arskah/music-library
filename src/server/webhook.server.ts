@@ -1,6 +1,9 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
-import { ApiError, badRequest } from "./errors.ts";
+import { z } from "zod";
+
+import { event as eventSchema, type Event } from "../schema.ts";
+import { badRequest, tooLarge, unauthorized } from "../errors.ts";
 
 /** The app's `X-{APP_NAME}-Signature` (`docs/now-playing-broadcast.md`). */
 export const SIGNATURE = "x-radiodiodj-signature";
@@ -9,23 +12,6 @@ const SCHEME = "sha256=";
 /** The events are a few hundred bytes. The cap is on a body that is read
  * whole before anything has vouched for its sender. */
 export const MAX_BODY = 64 * 1024;
-
-/** The event's track without its `id` and `path`, which are the studio
- * machine's own and mean nothing here. */
-export type Track = {
-  title: string;
-  artist: string;
-  album: string;
-  genre: string | null;
-  durationSec: number;
-  contentType: string;
-};
-
-/** What the app's now-playing webhook sends. */
-export type Event =
-  | { event: "now_playing"; track: Track; startedAt: string }
-  | { event: "stopped"; stoppedAt: string }
-  | { event: "test"; sentAt: string };
 
 /** The secret the app signs with, or null when the endpoint is off. Without
  * one there is nothing to tell the app from anyone else. */
@@ -48,46 +34,13 @@ export function signed(secret: string, body: Uint8Array, header: string): boolea
   return given.length === expected.length && timingSafeEqual(given, expected);
 }
 
-function string(value: unknown, field: string): string {
-  if (typeof value !== "string") throw new Error(`${field}: expected a string`);
-  return value;
-}
-
 /** Reads one of the app's events, keeping only the fields this page uses. */
 export function parseEvent(text: string): Event {
-  const raw = JSON.parse(text);
-  if (typeof raw !== "object" || raw === null) throw new Error("expected an object");
-  switch (raw.event) {
-    case "now_playing": {
-      const t = raw.track;
-      if (typeof t !== "object" || t === null) throw new Error("track: expected an object");
-      if (typeof t.durationSec !== "number") throw new Error("durationSec: expected a number");
-      if (t.genre != null && typeof t.genre !== "string") throw new Error("genre: expected a string");
-      return {
-        event: "now_playing",
-        track: {
-          title: string(t.title, "title"),
-          artist: string(t.artist, "artist"),
-          album: string(t.album, "album"),
-          genre: t.genre ?? null,
-          durationSec: t.durationSec,
-          contentType: string(t.contentType, "contentType"),
-        },
-        startedAt: string(raw.startedAt, "startedAt"),
-      };
-    }
-    case "stopped":
-      return { event: "stopped", stoppedAt: string(raw.stoppedAt, "stoppedAt") };
-    case "test":
-      return { event: "test", sentAt: string(raw.sentAt, "sentAt") };
-    default:
-      throw new Error(`unknown event ${JSON.stringify(raw.event)}`);
-  }
+  return eventSchema.parse(JSON.parse(text));
 }
 
 /** The body as it was sent, refused once it passes `MAX_BODY`. */
 async function readBody(request: Request): Promise<Uint8Array> {
-  const tooLarge = () => new ApiError(413, "body too large");
   if (Number(request.headers.get("content-length") ?? 0) > MAX_BODY) throw tooLarge();
   const chunks: Uint8Array[] = [];
   let size = 0;
@@ -107,14 +60,15 @@ export async function receive(secret: string, request: Request): Promise<Respons
   const body = await readBody(request);
   const header = request.headers.get(SIGNATURE);
   if (header === null || !signed(secret, body, header)) {
-    throw new ApiError(401, "unauthorized");
+    throw unauthorized();
   }
 
   let event: Event;
   try {
     event = parseEvent(new TextDecoder().decode(body));
   } catch (e) {
-    throw badRequest(`not a now-playing event: ${(e as Error).message}`);
+    const reason = e instanceof z.ZodError ? z.prettifyError(e) : String(e);
+    throw badRequest(`not a now-playing event: ${reason}`);
   }
   if (event.event === "test") {
     console.info("webhook: test event");

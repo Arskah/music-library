@@ -11,7 +11,12 @@ const MIGRATION_LOCK = 505_001;
 /** No TLS: the connection is expected to stay inside the cluster. Idle
  * connections do not hold the process open once the server has closed. */
 export function connect(url: string): pg.Pool {
-  return new pg.Pool({ connectionString: url, max: 8, allowExitOnIdle: true });
+  const db = new pg.Pool({ connectionString: url, max: 8, allowExitOnIdle: true });
+  // An idle connection Postgres drops, as on a restart, is reported here.
+  // The pool has already let it go, and unheard the report would end the
+  // process.
+  db.on("error", (e) => console.warn(`idle database connection lost: ${e.message}`));
+  return db;
 }
 
 let shared: pg.Pool | undefined;
