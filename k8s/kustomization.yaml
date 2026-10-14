@@ -11,7 +11,7 @@ resources:
 images:
   - name: library-search
     newName: registry.aarnihalinen.fi/library-search
-    newTag: 0.5.0
+    newTag: 0.6.0
 
 # The secrets `admin-password` (the database's `admin` password), `web-db` (the page's own
 # database password), `web-login` (the page's shared login), `web-webhook` (the now-playing
