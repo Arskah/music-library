@@ -10,7 +10,7 @@ resources:
 
 images:
   - name: library-search
-    newName: forge.aarnihalinen.fi/arska/music-library
+    newName: forge.aarnihalinen.fi/public/music-library
     newTag: 0.6.0
 
 # The secrets `admin-password` (the database's `admin` password), `web-db` (the page's own

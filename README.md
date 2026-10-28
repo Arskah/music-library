@@ -123,7 +123,7 @@ syncs it from `main`. Merging a change to `k8s` is the deploy.
 
 ```sh
 # Build for the cluster's architecture and push.
-docker build --platform linux/amd64 -t forge.aarnihalinen.fi/arska/music-library:0.6.0 --push .
+docker build --platform linux/amd64 -t forge.aarnihalinen.fi/public/music-library:0.6.0 --push .
 ```
 
 ### Secrets
