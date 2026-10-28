@@ -123,12 +123,12 @@ syncs it from `main`. Merging a change to `k8s` is the deploy.
 
 ```sh
 # Build for the cluster's architecture and push.
-docker build --platform linux/amd64 -t registry.aarnihalinen.fi/library-search:0.6.0 --push .
+docker build --platform linux/amd64 -t forge.aarnihalinen.fi/arska/music-library:0.6.0 --push .
 ```
 
 ### Secrets
 
-Five secrets in the namespace are not in this repository. They are SealedSecrets
+Four secrets in the namespace are not in this repository. They are SealedSecrets
 in Arskah/kube (`sealed-secrets/sealed-music-library-*.json`):
 
 - `admin-password`, key `password`: the password of `admin`, the database's superuser.
@@ -141,7 +141,6 @@ in Arskah/kube (`sealed-secrets/sealed-music-library-*.json`):
 - `web-login`, key `login`: the page's shared login, as `user:password`.
 - `web-webhook`, key `secret`: what the app signs its now-playing events with.
   Optional: without it the page starts with no webhook endpoint.
-- `regcred`: the pull secret for `registry.aarnihalinen.fi`.
 
 A new image needs a new tag in `k8s/kustomization.yaml`.
 
