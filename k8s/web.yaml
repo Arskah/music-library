@@ -27,8 +27,6 @@ spec:
       labels:
         app: web
     spec:
-      imagePullSecrets:
-        - name: regcred
       securityContext:
         runAsNonRoot: true
         seccompProfile:
